@@ -1,6 +1,4 @@
-
-unlet! g:V
-" DefaultConfigurationFunctions:
+" SetupHelper:
 function! EasyMotion#InitOptions(options) "{{{1
   for [varname, value] in items(a:options)
     if !exists(varname)
@@ -62,22 +60,19 @@ function! EasyMotion#InitMappings(motions) "{{{1
     silent exec 'vnoremap <silent> ' . g:EasyMotion_mapping_{motion} . ' :<C-U>call EasyMotion#' . fn.name . '(1, ' . fn.dir . ')<CR>'
   endfor
 endfunction "}}}
-" MotionFunctions:
+" Motion:
 function! EasyMotion#F(visualmode, direction) "{{{1
-  let char = s:GetSearchChar(a:visualmode)
-
+  let char = s:getsearchchar(a:visualmode)
   if empty(char)
     return
   endif
 
   let re = '\C' . escape(char, '.$^~')
-
-  " call s:EasyMotion(re, a:direction, a:visualmode ? visualmode() : '', mode(1))
   call s:em.start(re, a:direction, a:visualmode ? visualmode() : '', mode(1))
 endfunction
 
 function! EasyMotion#T(visualmode, direction) "{{{1
-  let char = s:GetSearchChar(a:visualmode)
+  let char = s:getsearchchar(a:visualmode)
 
   if empty(char)
     return
@@ -115,7 +110,7 @@ endfunction
 function! EasyMotion#Search(visualmode, direction) "{{{1
   call s:em.start(@/, a:direction, a:visualmode ? visualmode() : '', '')
 endfunction "}}}
-" HelperFunctions:
+" Helper:
 function! s:msg(message) "{{{1
   echohl PreProc
   echon 'EasyMotion: '
@@ -130,29 +125,9 @@ function! s:prompt(message) "{{{1
 endfunction
 
 
-function! s:VarReset(var, ...) "{{{1
-  if ! exists('s:var_reset')
-    let s:var_reset = {}
-  endif
-
-  let buf = bufname("")
-
-  if a:0 == 0 && has_key(s:var_reset, a:var)
-    " Reset var to original value
-    call setbufvar(buf, a:var, s:var_reset[a:var])
-  elseif a:0 == 1
-    let new_value = a:0 == 1 ? a:1 : ''
-
-    " Store original value
-    let s:var_reset[a:var] = getbufvar(buf, a:var)
-
-    " Set new var value
-    call setbufvar(buf, a:var, new_value)
-  endif
-endfunction
 
 
-function! s:SetLines(lines, key) "{{{1
+function! s:setlines(lines, key) "{{{1
   try
     " Try to join changes with previous undo block
     undojoin
@@ -165,7 +140,7 @@ function! s:SetLines(lines, key) "{{{1
   endfor
 endfunction
 
-function! s:GetChar() "{{{1
+function! s:getchar() "{{{1
   let char = getchar()
   if char == char2nr("\<Esc>")
     " Escape key pressed
@@ -176,9 +151,9 @@ function! s:GetChar() "{{{1
   return nr2char(char)
 endfunction
 
-function! s:GetSearchChar(visualmode) "{{{1
+function! s:getsearchchar(visualmode) "{{{1
   call s:prompt('Search for character')
-  let char = s:GetChar()
+  let char = s:getchar()
   " Check that we have an input char
   if empty(char)
     " Restore selection
@@ -191,17 +166,14 @@ function! s:GetSearchChar(visualmode) "{{{1
 
   return char
 endfunction
+" }}}
 
 " GroupingAlgorithms:
-let s:grouping_algorithms = {
-      \   1: 'SCTree'
-      \ , 2: 'Original'
-      \ }
-
-" Single-key/closest target priority tree {{{
-" This algorithm tries to assign one-key jumps to all the targets closest to the cursor.
-" It works recursively and will work correctly with as few keys as two.
-function! s:GroupingAlgorithmSCTree(targets, keys) "{{{1
+let s:grouping = {}
+function! s:grouping.SCTree(targets, keys) "{{{1
+  " Single-key/closest target priority tree
+  " This algorithm tries to assign one-key jumps to all the targets closest to the cursor.
+  " It works recursively and will work correctly with as few keys as two.
   " Prepare variables for working
   let targets_len = len(a:targets)
   let keys_len = len(a:keys)
@@ -271,7 +243,7 @@ function! s:GroupingAlgorithmSCTree(targets, keys) "{{{1
     if key_count > 1
       " We need to create a subgroup
       " Recurse one level deeper
-      let groups[a:keys[key]] = s:GroupingAlgorithmSCTree(a:targets[i : i + key_count - 1], a:keys)
+      let groups[a:keys[key]] = self.SCTree(a:targets[i : i + key_count - 1], a:keys)
     elseif key_count == 1
       " Assign single target key
       let groups[a:keys[key]] = a:targets[i]
@@ -289,8 +261,7 @@ function! s:GroupingAlgorithmSCTree(targets, keys) "{{{1
   return groups
 endfunction
 " }}}
-" Original:
-function! s:GroupingAlgorithmOriginal(targets, keys) "{{{1
+function! s:grouping.Original(targets, keys) "{{{1
   " Split targets into groups (1 level)
   let targets_len = len(a:targets)
   let keys_len = len(a:keys)
@@ -321,148 +292,136 @@ function! s:GroupingAlgorithmOriginal(targets, keys) "{{{1
   return groups
 endfunction
 " }}}
-" Coord/key dictionary creation {{{
-
 function! s:CreateCoordKeyDict(groups, ...) "{{{1
   " Dict structure:
   " 1,2 : a
   " 2,3 : b
-  let sort_list = []
   let coord_keys = {}
   let group_key = a:0 == 1 ? a:1 : ''
 
+  " item = [line, col]
+  " key = 'x','y'. etc
   for [key, item] in items(a:groups)
     let key = ( ! empty(group_key) ? group_key : key)
-
-    if type(item) == 3
-      " Destination coords
-
-      " The key needs to be zero-padded in order to
-      " sort correctly
-      let dict_key = printf('%05d,%05d', item[0], item[1])
-      let coord_keys[dict_key] = key
-
-      " We need a sorting list to loop correctly in
-      " PromptUser, dicts are unsorted
-      call add(sort_list, dict_key)
-    else
+    if type(item) == type([])
+      " zero-padded in order to sort correctly
+      let line_col = printf('%05d,%05d', item[0], item[1])
+      let coord_keys[line_col] = key
+    elseif type(item) == type({})
       " Item is a dict (has children)
-      let coord_key_dict = s:CreateCoordKeyDict(item, key)
-
-      " Make sure to extend both the sort list and the
-      " coord key dict
-      call extend(sort_list, coord_key_dict[0])
-      call extend(coord_keys, coord_key_dict[1])
+      call extend(coord_keys, s:CreateCoordKeyDict(item, key))
+    else
+      throw "NEVER HAPPEN"
     endif
-
     unlet item
   endfor
-
-  return [sort_list, coord_keys]
+  return coord_keys
 endfunction
 " }}}
-" Core:
-function! s:PromptUser(groups) "{{{1
-  let group_values = values(a:groups)
 
-  if len(group_values) == 1
-    redraw
-    return group_values[0]
+" POS:
+let s:pos = {}
+function! s:pos.new(pos) "{{{1
+  " pos should size one List of [line, col]
+  let o = deepcopy(self)
+  let o.line = a:pos[0]
+  let o.col = a:pos[1]
+  return o
+endfunction
+
+function! s:pos.to_s() "{{{1
+  return string([self.line, self.col])
+endfunction
+
+function! s:pos.set(...) "{{{1
+  if a:0 == 0
+    call cursor(self.line, self.col)
+  else
+    keepjump call cursor(self.line, self.col)
   endif
+endfunction
+" }}}
 
+" UI:
+let s:ui = {}
+function! s:ui.read_target() "{{{1
+  call s:prompt('Target key')
+  return s:getchar()
+endfunction
+function! s:ui.show_jumpscreen()
+  call self.setup_tareget_hl()
+  call s:setlines(items(self.lines), 'marker')
+  redraw
+endfunction
+
+function! s:ui.revert_screen() "{{{1
+  call s:setlines(items(self.lines), 'orig')
+  if has_key(self, "target_hl_id")
+    call matchdelete(self.target_hl_id)
+  endif
+  redraw
+endfunction
+
+function! s:ui.prepare_display_lines(groups) "{{{1
   let lines = {}
-  let hl_coords = []
-  let coord_key_dict = s:CreateCoordKeyDict(a:groups)
-  unlet! g:E
-  let g: = coord_key_dict
 
-  for dict_key in sort(coord_key_dict[0])
-    let target_key = coord_key_dict[1][dict_key]
-    let [line_num, col_num] = split(dict_key, ',')
-
+  for col_line in self.sorted_col_line
+    let target_key = self.c_dic[col_line]
+    let [line_num, col_num] = split(col_line, ',')
     let line_num = str2nr(line_num)
-    let col_num = str2nr(col_num)
+    let col_num  = str2nr(col_num)
 
-    " Add original line and marker line
     if ! has_key(lines, line_num)
       let current_line = getline(line_num)
       let lines[line_num] = { 'orig': current_line, 'marker': current_line, 'mb_compensation': 0 }
     endif
-
-    " Compensate for byte difference between marker
-    " character and target character
-    "
-    " This has to be done in order to match the correct
-    " column; \%c matches the byte column and not display
-    " column.
     let target_char_len = strlen(matchstr(lines[line_num]['marker'], '\%' . col_num . 'c.'))
     let target_key_len = strlen(target_key)
 
-    " Solve multibyte issues by matching the byte column
-    " number instead of the visual column
     let col_num -= lines[line_num]['mb_compensation']
-
     if strlen(lines[line_num]['marker']) > 0
-      " Substitute marker character if line length > 0
       let lines[line_num]['marker'] = substitute(lines[line_num]['marker'], '\%' . col_num . 'c.', target_key, '')
     else
-      " Set the line to the marker character if the line is empty
       let lines[line_num]['marker'] = target_key
     endif
-
-    " Add highlighting coordinates
-    call add(hl_coords, '\%' . line_num . 'l\%' . col_num . 'c')
-
-    " Add marker/target lenght difference for multibyte
-    " compensation
     let lines[line_num]['mb_compensation'] += (target_char_len - target_key_len)
   endfor
+  return lines
+endfunction
 
-" lines is like this, key is line number
-"  '30': {
-"    'marker':
-"      '      \ ''aui''     : [''bONE'', ''c777777'' , ''dONE''],',
-"    'mb_compensation': 0,
-"    'orig':
-"      '      \ ''gui''     : [''NONE'', ''#777777'' , ''NONE''],'
-"  },
-  let g:V = lines
-  let lines_items = items(lines)
-  " }}}
-  " Highlight targets {{{
-  let target_hl_id = matchadd(g:EasyMotion_hl_group_target, join(hl_coords, '\|'), 1)
-  " }}}
+function! s:ui.setup_tareget_hl() "{{{1
+  let hl_expr =  join(map(map(self.sorted_col_line, 'split(v:val, ",")'), 
+        \ "'\\%' . v:val[0] . 'l\\%' . v:val[1] . 'c'"), '\|')
+  let self.target_hl_id = matchadd(g:EasyMotion_hl_group_target, hl_expr , 1)
+endfunction
+
+function! s:ui.start(groups) "{{{1
+  let group_values = values(a:groups)
+  if len(group_values) == 1
+    redraw
+    return s:pos.new(group_values[0])
+  endif
+  let self.c_dic = s:CreateCoordKeyDict(a:groups)
+  let self.sorted_col_line = sort(keys(self.c_dic))
+  let self.lines = self.prepare_display_lines(a:groups)
 
   try
-    call s:SetLines(lines_items, 'marker')
-    redraw
-    call s:prompt('Target key')
-    let char = s:GetChar()
+    call self.show_jumpscreen()
+    let char = self.read_target()
+    call s:ensure(!empty(char), "Cancelled")
+    call s:ensure(has_key(a:groups, char), "Invalid target" )
   finally
-    call s:SetLines(lines_items, 'orig')
-    if exists('target_hl_id')
-      call matchdelete(target_hl_id)
-    endif
-    redraw
+    call self.revert_screen()
   endtry
-  if empty(char)
-    throw 'Cancelled'
-  endif
-  if ! has_key(a:groups, char)
-    throw 'Invalid target'
-  endif
 
   let target = a:groups[char]
-
-  if type(target) == type([])
-    return target
-  else
-    return s:PromptUser(target)
-  endif
+  return type(target) == type([])
+        \ ? s:pos.new(target)
+        \ : self.start(target)
 endfunction
 " }}}
 
-" EM:
+" Main:
 let s:em = {}
 function! s:em.set_opts() "{{{1
   let opts = {
@@ -489,42 +448,23 @@ function! s:em.restore_opts() "{{{1
 endfunction
 
 function! s:em.start(regexp, direction, visualmode, mode) "{{{1
-  let self.orig_pos = s:pos.new(line('.'), col('.'))
+  let self.orig_pos = s:pos.new([line('.'), col('.')])
   let self.direction = a:direction
   let self.vmode = a:visualmode
   let targets = []
-  let funcname = 's:GroupingAlgorithm'
-        \ . s:grouping_algorithms[g:EasyMotion_grouping] 
-  " varname for funcref must begin Captal
-  let GroupingFn = function(funcname)
+  let group_funname = g:EasyMotion_grouping
 
   try
     call self.set_opts()
   " target = [[line, col], [line, col] ... ]
     let targets = self.gatherTargets(a:regexp)
-    if empty(targets)
-      throw 'No matches'
-    endif
-    " }}}
-    let groups = GroupingFn(targets, split(g:EasyMotion_keys, '\zs'))
-    " let g:V = groups
-"  groups is like below, key is the Jump key and value is pos which gather in
-"  gatherTargets()
-"    {
-"      'W': [22, 7],
-"      'X': [22, 14],
-"      'Y': {
-"        'a': [22, 18],
-"        'b': [22, 22],
-"        'c': [22, 26], 
-"      }
-"    }
-    call self.shade()
+    call s:ensure( !empty(targets), "No candidate")
 
-    " Prompt user for target group/character
-    " coords = [line, col]
-    let [l, c] =  s:PromptUser(groups)
-    let coords = s:pos.new(l,c)
+    let groups = 
+          \ s:grouping[group_funname](targets, split(g:EasyMotion_keys, '\zs'))
+
+    call self.shade()
+    let coords = s:ui.start(groups)
 
     " Update selection {{{
     if ! empty(self.vmode)
@@ -557,6 +497,12 @@ function! s:em.start(regexp, direction, visualmode, mode) "{{{1
     call self.restore_opts()
     call self.shade_reset()
   endtry
+endfunction
+
+function! s:ensure(expr, err) "{{{1
+  if ! a:expr
+    throw a:err
+  endif
 endfunction
 
 function! s:em.recover() "{{{1
@@ -601,29 +547,5 @@ function! s:em.gatherTargets(regexp) "{{{1
   return targets
 endfunction
 " }}}
-
-" POS:
-let s:pos = {}
-function! s:pos.new(line,col) "{{{1
-  let o = deepcopy(self)
-  let o.line = a:line
-  let o.col = a:col
-  return o
-endfunction
-
-function! s:pos.to_s() "{{{1
-  return string([self.line, self.col])
-endfunction
-
-function! s:pos.set(...) "{{{1
-  if a:0 == 0
-    call cursor(self.line, self.col)
-  else
-    keepjump call cursor(self.line, self.col)
-  endif
-endfunction
-" }}}
-
-
 
 " vim: foldmethod=marker
