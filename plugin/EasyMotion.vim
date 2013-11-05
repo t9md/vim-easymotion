@@ -1,73 +1,71 @@
-" EasyMotion - Vim motions on speed!
-"
-" Author: Kim Silkebækken <kim.silkebaekken+vim@gmail.com>
-" Source repository: https://github.com/Lokaltog/vim-easymotion
+" ScriptInitialization:
+if exists('g:EasyMotion_loaded') || &compatible || version < 702
+  " finish
+endif
 
-" Script initialization {{{
-	if exists('g:EasyMotion_loaded') || &compatible || version < 702
-		finish
-	endif
+let g:EasyMotion_loaded = 1
 
-	let g:EasyMotion_loaded = 1
-" }}}
-" Default configuration {{{
-	" Default options {{{
-		call EasyMotion#InitOptions({
-		\   'leader_key'      : '<Leader><Leader>'
-		\ , 'keys'            : 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-		\ , 'do_shade'        : 1
-		\ , 'do_mapping'      : 1
-		\ , 'grouping'        : 1
-		\
-		\ , 'hl_group_target' : 'EasyMotionTarget'
-		\ , 'hl_group_shade'  : 'EasyMotionShade'
-		\ })
-	" }}}
-	" Default highlighting {{{
-		let s:target_hl_defaults = {
-		\   'gui'     : ['NONE', '#ff0000' , 'bold']
-		\ , 'cterm256': ['NONE', '196'     , 'bold']
-		\ , 'cterm'   : ['NONE', 'red'     , 'bold']
-		\ }
+" DefaultConfiguration:
+"=================================================================
+" DefaultOptions:
+call EasyMotion#InitOptions({
+      \ 'g:EasyMotion_leader_key'      : '<Leader><Leader>',
+      \ 'g:EasyMotion_keys'            : 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      \ 'g:EasyMotion_do_shade'        : 1,
+      \ 'g:EasyMotion_do_mapping'      : 1,
+      \ 'g:EasyMotion_grouping'        : 1,
+      \ 'g:EasyMotion_hl_group_target' : 'EasyMotionTarget',
+      \ 'g:EasyMotion_hl_group_shade'  : 'EasyMotionShade',
+      \ })
 
-		let s:shade_hl_defaults = {
-		\   'gui'     : ['NONE', '#777777' , 'NONE']
-		\ , 'cterm256': ['NONE', '242'     , 'NONE']
-		\ , 'cterm'   : ['NONE', 'grey'    , 'NONE']
-		\ }
+" DefaultHighlighting:
+" [ guibg, guifg, qui ]
+let s:target_hl_defaults = {
+      \ 'gui'     : ['NONE', '#ff0000' , 'bold'],
+      \ 'cterm256': ['NONE', '196'     , 'bold'],
+      \ 'cterm'   : ['NONE', 'red'     , 'bold'],
+      \ }
 
-		call EasyMotion#InitHL(g:EasyMotion_hl_group_target, s:target_hl_defaults)
-		call EasyMotion#InitHL(g:EasyMotion_hl_group_shade,  s:shade_hl_defaults)
+let s:shade_hl_defaults = {
+      \ 'gui'     : ['NONE', '#777777' , 'NONE'],
+      \ 'cterm256': ['NONE', '242'     , 'NONE'],
+      \ 'cterm'   : ['NONE', 'grey'    , 'NONE'],
+      \ }
 
-		" Reset highlighting after loading a new color scheme {{{
-			augroup EasyMotionInitHL
-				autocmd!
+function! s:init_hl_target() "{{{1
+  call EasyMotion#InitHL(g:EasyMotion_hl_group_target, s:target_hl_defaults)
+endfunction
+function! s:init_hl_shade() "{{{1
+  call EasyMotion#InitHL(g:EasyMotion_hl_group_shade,  s:shade_hl_defaults)
+endfunction
 
-				autocmd ColorScheme * call EasyMotion#InitHL(g:EasyMotion_hl_group_target, s:target_hl_defaults)
-				autocmd ColorScheme * call EasyMotion#InitHL(g:EasyMotion_hl_group_shade,  s:shade_hl_defaults)
-			augroup end
-		" }}}
-	" }}}
-	" Default key mapping {{{
-		call EasyMotion#InitMappings({
-		\   'f' : { 'name': 'F'  , 'dir': 0 }
-		\ , 'F' : { 'name': 'F'  , 'dir': 1 }
-		\ , 't' : { 'name': 'T'  , 'dir': 0 }
-		\ , 'T' : { 'name': 'T'  , 'dir': 1 }
-		\ , 'w' : { 'name': 'WB' , 'dir': 0 }
-		\ , 'W' : { 'name': 'WBW', 'dir': 0 }
-		\ , 'b' : { 'name': 'WB' , 'dir': 1 }
-		\ , 'B' : { 'name': 'WBW', 'dir': 1 }
-		\ , 'e' : { 'name': 'E'  , 'dir': 0 }
-		\ , 'E' : { 'name': 'EW' , 'dir': 0 }
-		\ , 'ge': { 'name': 'E'  , 'dir': 1 }
-		\ , 'gE': { 'name': 'EW' , 'dir': 1 }
-		\ , 'j' : { 'name': 'JK' , 'dir': 0 }
-		\ , 'k' : { 'name': 'JK' , 'dir': 1 }
-		\ , 'n' : { 'name': 'Search' , 'dir': 0 }
-		\ , 'N' : { 'name': 'Search' , 'dir': 1 }
-		\ })
-	" }}}
-" }}}
+call s:init_hl_target()
+call s:init_hl_shade()
 
-" vim: fdm=marker:noet:ts=4:sw=4:sts=4
+augroup EasyMotionInitHL
+  autocmd!
+  autocmd ColorScheme * call s:init_hl_target()
+  autocmd ColorScheme * call s:init_hl_shade()
+augroup END
+
+" 'name' is function name
+call EasyMotion#InitMappings({
+      \ 'f':  { 'name': 'F',      'dir': 0 },
+      \ 'F':  { 'name': 'F',      'dir': 1 },
+      \ 't':  { 'name': 'T',      'dir': 0 },
+      \ 'T':  { 'name': 'T',      'dir': 1 },
+      \ 'w':  { 'name': 'WB',     'dir': 0 },
+      \ 'W':  { 'name': 'WBW',    'dir': 0 },
+      \ 'b':  { 'name': 'WB',     'dir': 1 },
+      \ 'B':  { 'name': 'WBW',    'dir': 1 },
+      \ 'e':  { 'name': 'E',      'dir': 0 },
+      \ 'E':  { 'name': 'EW',     'dir': 0 },
+      \ 'ge': { 'name': 'E',      'dir': 1 },
+      \ 'gE': { 'name': 'EW',     'dir': 1 },
+      \ 'j':  { 'name': 'JK',     'dir': 0 },
+      \ 'k':  { 'name': 'JK',     'dir': 1 },
+      \ 'n':  { 'name': 'Search', 'dir': 0 },
+      \ 'N':  { 'name': 'Search', 'dir': 1 },
+      \ })
+
+" vim: foldmethod=marker
