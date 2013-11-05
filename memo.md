@@ -1,3 +1,6 @@
+# hl match basic
+\%23l\%10c => match line 23, 10col
+    call add(hl_coords, '\%' . line_num . 'l\%' . col_num . 'c')
 # gatherTarget
     self.gatherTargets(a:regexp)
        =>  target = [[line, col], [line, col] ... ]

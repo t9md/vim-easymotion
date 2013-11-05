@@ -13,7 +13,7 @@ call EasyMotion#InitOptions({
       \ 'g:EasyMotion_keys'            : 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
       \ 'g:EasyMotion_do_shade'        : 1,
       \ 'g:EasyMotion_do_mapping'      : 1,
-      \ 'g:EasyMotion_grouping'        : 1,
+      \ 'g:EasyMotion_grouping'        : 'SCTree',
       \ 'g:EasyMotion_hl_group_target' : 'EasyMotionTarget',
       \ 'g:EasyMotion_hl_group_shade'  : 'EasyMotionShade',
       \ })
