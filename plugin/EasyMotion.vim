@@ -8,7 +8,7 @@ let g:EasyMotion_loaded = 1
 " DefaultConfiguration:
 "=================================================================
 " DefaultOptions:
-call EasyMotion#InitOptions({
+call easymotion#helper#InitOptions({
       \ 'g:EasyMotion_leader_key'      : '<Leader><Leader>',
       \ 'g:EasyMotion_keys'            : 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
       \ 'g:EasyMotion_do_shade'        : 1,
@@ -33,10 +33,10 @@ let s:shade_hl_defaults = {
       \ }
 
 function! s:init_hl_target() "{{{1
-  call EasyMotion#InitHL(g:EasyMotion_hl_group_target, s:target_hl_defaults)
+  call easymotion#helper#InitHL(g:EasyMotion_hl_group_target, s:target_hl_defaults)
 endfunction
 function! s:init_hl_shade() "{{{1
-  call EasyMotion#InitHL(g:EasyMotion_hl_group_shade,  s:shade_hl_defaults)
+  call easymotion#helper#InitHL(g:EasyMotion_hl_group_shade,  s:shade_hl_defaults)
 endfunction
 
 call s:init_hl_target()
@@ -49,7 +49,7 @@ augroup EasyMotionInitHL
 augroup END
 
 " 'name' is function name
-call EasyMotion#InitMappings({
+call easymotion#helper#InitMappings({
       \ 'f':  { 'name': 'F',      'dir': 0 },
       \ 'F':  { 'name': 'F',      'dir': 1 },
       \ 't':  { 'name': 'T',      'dir': 0 },
