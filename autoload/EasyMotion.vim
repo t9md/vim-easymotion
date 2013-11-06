@@ -1,5 +1,5 @@
 " WORD DEFINITION
-" * target_key(tgt): key to type to jump new_pos
+" * target_key or tgt: key to type to jump new_pos
 " * pos: position which consists of [line, column]
 " * pos_new: new cursor postion to jump to
 " * pos_org: original cursor position
