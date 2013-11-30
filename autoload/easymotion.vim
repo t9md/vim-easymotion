@@ -4,6 +4,7 @@
 " * pos_new: new cursor postion to jump to
 " * pos_org: original cursor position
 let s:u = easymotion#util#use([ "msg", "ensure" ])
+
 let s:em = {}
 function! s:em.set_opts() "{{{1
   let opts = {
@@ -36,7 +37,6 @@ function! s:em.start(regexp, direction, visualmode, mode) "{{{1
   let self.direction = a:direction
   let self.vmode = a:visualmode
   let targets = []
-  " let self.gen_tgt2pos = function("s:group_" . g:EasyMotion_grouping )
   try
     call self.set_opts()
   " target = [[line, col], [line, col] ... ]
@@ -87,7 +87,8 @@ function! s:em.shade() "{{{1
   if !g:EasyMotion_do_shade
     return
   endif
-  let hl_pos = '\%' . self.pos_org.line . 'l\%'. self.pos_org.col .'c'
+  let [line, col ] = [ self.pos_org.line, self.pos_org.col ]
+  let hl_pos = '\%' . line . 'l\%'. col .'c'
   let hl_re = self.direction ==# 1
         \ ? '\%'. line('w0') .'l\_.*' . hl_pos
         \ : hl_pos . '\_.*\%'. line('w$') .'l'

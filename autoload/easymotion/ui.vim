@@ -37,12 +37,13 @@ function! s:ui.prepare_display_lines(groups) "{{{1
       let current_line = getline(line_num)
       let lines[line_num] = { 'orig': current_line, 'marker': current_line, 'mb_compensation': 0 }
     endif
-    let target_char_len = strlen(matchstr(lines[line_num]['marker'], '\%' . col_num . 'c.'))
-    let target_key_len = strlen(target_key)
+    let target_char_len = strdisplaywidth(matchstr(lines[line_num]['marker'], '\%' . col_num . 'c.'))
+    let target_key_len = strdisplaywidth(target_key)
+    let padding = repeat(' ', (target_char_len - target_key_len))
 
-    let col_num -= lines[line_num]['mb_compensation']
+    " let col_num -= lines[line_num]['mb_compensation']
     if strlen(lines[line_num]['marker']) > 0
-      let lines[line_num]['marker'] = substitute(lines[line_num]['marker'], '\%' . col_num . 'c.', target_key, '')
+      let lines[line_num]['marker'] = substitute(lines[line_num]['marker'], '\%' . col_num . 'c.', target_key . padding, '')
     else
       let lines[line_num]['marker'] = target_key
     endif
@@ -54,7 +55,7 @@ endfunction
 function! s:ui.setup_tareget_hl() "{{{1
   let hl_expr =  join(map(map(self.sorted_pos, 'split(v:val, ",")'), 
         \ "'\\%' . v:val[0] . 'l\\%' . v:val[1] . 'c'"), '\|')
-  let self.target_hl_id = matchadd(g:EasyMotion_hl_group_target, hl_expr , 1)
+  let self.target_hl_id = matchadd(g:EasyMotion_hl_group_target, hl_expr , 200)
 endfunction
 
 function! s:ui.gen_pos2tgt(tgt2pos, ...) "{{{1
@@ -94,12 +95,15 @@ function! s:ui.start(tgt2pos) "{{{1
     call self.show_jumpscreen()
     let tgt = self.read_target()
     call s:em.ensure(!empty(tgt), "Cancelled")
-    call s:em.ensure(has_key(a:tgt2pos, tgt), "Invalid target" )
+    let up_tgt = toupper(tgt)
+    " call s:em.ensure(has_key(a:tgt2pos, tgt), "Invalid target" )
+    call s:em.ensure(has_key(a:tgt2pos, up_tgt), "Invalid target" )
   finally
     call self.revert_screen()
   endtry
 
-  let pos = a:tgt2pos[tgt]
+  let pos = a:tgt2pos[up_tgt]
+  " let pos = a:tgt2pos[tgt]
   return type(pos) == type([])
         \ ? easymotion#pos#new(pos)
         \ : self.start(pos)

@@ -1,3 +1,8 @@
+map <SID>xx <SID>xx
+let s:sid = maparg("<SID>xx")
+unmap <SID>xx
+let s:sid = substitute(s:sid, 'xx', '', '')
+
 function! s:msg(message) "{{{1
   echohl PreProc
   echon 'EasyMotion: '
@@ -60,7 +65,7 @@ endfunction
 function! easymotion#util#use(list) "{{{1
   let u = {}
   for fname in a:list
-    let u[fname] = function('s:' . fname)
+    let u[fname] = function(s:sid . fname)
   endfor
   return u
 endfunction
